@@ -1,0 +1,671 @@
+<!DOCTYPE html>
+<html lang="ja" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Web DAW (Step Sequencer)</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        html, body {
+            height: 100%;
+            background-color: #1a202c; /* gray-900 */
+        }
+        /* スクロールバー */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #2d3748; /* gray-800 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #4a5568; /* gray-600 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #718096; /* gray-500 */
+        }
+        /* スライダーのスタイル */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 100%;
+            margin: 3.8px 0;
+            background-color: transparent;
+        }
+        input[type=range]:focus {
+            outline: none;
+        }
+        /* Webkit (Chrome, Safari) */
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 8.4px;
+            cursor: pointer;
+            background: #2d3748; /* gray-800 */
+            border-radius: 3px;
+            border: 0.2px solid #010101;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            border: 1px solid #000000;
+            height: 16px;
+            width: 16px;
+            border-radius: 3px;
+            background: #718096; /* gray-500 */
+            cursor: pointer;
+            -webkit-appearance: none;
+            margin-top: -4px;
+        }
+        input[type=range]:focus::-webkit-slider-runnable-track {
+            background: #374151; /* gray-700 */
+        }
+        /* Firefox */
+        input[type=range]::-moz-range-track {
+            width: 100%;
+            height: 8.4px;
+            cursor: pointer;
+            background: #2d3748;
+            border-radius: 3px;
+            border: 0.2px solid #010101;
+        }
+        input[type=range]::-moz-range-thumb {
+            border: 1px solid #000000;
+            height: 16px;
+            width: 16px;
+            border-radius: 3px;
+            background: #718096;
+            cursor: pointer;
+        }
+        
+        /* シーケンサーグリッド */
+        .step {
+            width: 40px; /* ステップの幅を固定 */
+            height: 100%;
+            border: 1px solid #4a5568; /* gray-600 */
+            background-color: #2d3748; /* gray-800 */
+            cursor: pointer;
+            transition: all 0.05s;
+            flex-shrink: 0; /* 縮まないように */
+        }
+        .step.active {
+            background-color: #3182ce; /* blue-600 */
+            box-shadow: 0 0 5px #3182ce;
+        }
+        .step.playing {
+            background-color: #4a5568; /* gray-600 */
+            transform: scale(1.05);
+        }
+        .step.playing.active {
+            background-color: #63b3ed; /* blue-400 */
+        }
+        .track-grid {
+            min-width: max-content; /* グリッド全体が縮まないように */
+        }
+    </style>
+</head>
+<body class="font-mono bg-gray-900 text-gray-200 h-full flex flex-col p-2 sm:p-4 overflow-hidden">
+
+    <div class="w-full max-w-7xl mx-auto flex flex-col h-full">
+
+        <!-- 1. ヘッダーとトランスポート -->
+        <header class="mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <h1 class="text-xl sm:text-2xl font-bold text-blue-400">Web DAW (Step Sequencer)</h1>
+                <div class="flex flex-wrap items-center gap-3">
+                    <!-- 保存/ロード -->
+                    <div class="flex items-center gap-2">
+                         <button id="saveProjectButton" class="px-3 py-1 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold text-sm">Save Project</button>
+                        <label class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 rounded-md text-white font-semibold text-sm cursor-pointer">
+                            <span>Load Project</span>
+                            <input type="file" id="loadProjectInput" accept=".json" class="hidden">
+                        </label>
+                    </div>
+                    <!-- 再生コントロール -->
+                    <div class="flex items-center gap-3 bg-gray-800 p-2 rounded-lg shadow-inner">
+                        <button id="playButton" class="px-6 py-2 bg-green-600 hover:bg-green-700 rounded-md shadow-lg text-white font-bold transition-all text-lg">
+                            ▶ PLAY
+                        </button>
+                        <button id="stopButton" class="px-6 py-2 bg-red-600 hover:bg-red-700 rounded-md shadow-lg text-white font-bold transition-all text-lg">
+                            ■ STOP
+                        </button>
+                        <div class="flex items-center gap-2">
+                            <label for="bpmInput" class="text-sm text-gray-400">BPM:</label>
+                            <input type="number" id="bpmInput" value="140" min="40" max="300" class="w-20 bg-gray-900 border border-gray-700 rounded-md px-2 py-1 text-lg focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <!-- 2. メインレイアウト (トラックヘッダー + グリッド) -->
+        <div class="flex-1 flex overflow-hidden">
+
+            <!-- 2-1. トラックヘッダー (ミキサー) -->
+            <div id="track-headers" class="flex flex-col gap-2 overflow-y-auto pr-2">
+                <!-- トラックヘッダーはJSで生成されます -->
+            </div>
+
+            <!-- 2-2. シーケンサーグリッド (64ステップ) -->
+            <div id="grid-container" class="flex-1 flex flex-col gap-2 overflow-x-auto">
+                <!-- グリッドはJSで生成されます -->
+            </div>
+
+        </div>
+
+        <!-- 3. フッター (コンソールログ) -->
+        <footer class="h-20 md:h-16 mt-3 overflow-y-auto bg-gray-800 p-2 rounded-md shadow-inner text-sm" id="consoleLog">
+            <span class="text-gray-400">> Web DAW Initialized. "Load Sample" ボタンから音を読み込んでください。</span><br>
+        </footer>
+    </div>
+
+    <!-- トラックヘッダーのテンプレート -->
+    <template id="track-header-template">
+        <div class="track-header h-20 p-2 bg-gray-800 rounded-lg shadow-md flex flex-col justify-between" style="width: 200px;">
+            <!-- サンプル名とロードボタン -->
+            <div class="flex items-center justify-between">
+                <span class="track-name text-sm font-bold truncate text-gray-300">...</span>
+                <label class="load-sample-label text-xs px-2 py-0.5 bg-blue-600 hover:bg-blue-700 rounded-md text-white font-semibold cursor-pointer">
+                    Load
+                    <input type="file" class="load-sample-input hidden" accept="audio/*">
+                </label>
+            </div>
+            <!-- Vol / Pan -->
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-400">Vol</label>
+                <input type="range" class="volume-slider" min="0" max="1.5" step="0.01" value="1">
+            </div>
+            <div class="flex items-center gap-2">
+                <label class="text-xs text-gray-400">Pan</label>
+                <input type="range" class="pan-slider" min="-1" max="1" step="0.01" value="0">
+            </div>
+        </div>
+    </template>
+
+    <!-- トラックグリッドのテンプレート -->
+    <template id="track-grid-template">
+        <div class="track-grid h-20 flex items-center justify-start">
+            <!-- ステップはJSで生成されます -->
+        </div>
+    </template>
+
+
+    <script>
+        // --- グローバル変数 ---
+        let audioContext;
+        let isPlaying = false;
+        let currentStep = 0;
+        let bpm = 140;
+        let lookaheadMs = 25.0; // スケジューリングの先読み時間 (ms)
+        let scheduleAheadTime = 0.1; // (s)
+        let nextNoteTime = 0.0; // 次のノートがスケジュールされる時間
+        let timerID;
+
+        const NUM_TRACKS = 8;
+        const NUM_STEPS = 64; // 16から64に拡張
+        let tracks = [];
+        let gridCells = []; // UIのセル (DOM)
+        let trackHeaderElements = []; // トラックヘッダーのDOM
+
+        // --- DOM取得 ---
+        const $ = (selector) => document.getElementById(selector);
+        const consoleLog = $('consoleLog');
+        const playButton = $('playButton');
+        const stopButton = $('stopButton');
+        const bpmInput = $('bpmInput');
+        const trackHeaderContainer = $('track-headers');
+        const gridContainer = $('grid-container');
+        const trackHeaderTemplate = $('track-header-template');
+        const trackGridTemplate = $('track-grid-template');
+        const saveProjectButton = $('saveProjectButton');
+        const loadProjectInput = $('loadProjectInput');
+
+        // --- ログ関数 ---
+        function log(message, type = 'info') {
+            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-400');
+            consoleLog.innerHTML += `<span class="${color}">> ${message}</span><br>`;
+            consoleLog.scrollTop = consoleLog.scrollHeight;
+        }
+
+        // --- 1. オーディオ初期化 ---
+        async function initAudio() {
+            if (audioContext && audioContext.state === 'running') {
+                return true;
+            }
+            try {
+                if (!audioContext) {
+                    audioContext = new (window.AudioContext || window.webkitAudioContext)();
+                }
+                if (audioContext.state === 'suspended') {
+                    await audioContext.resume();
+                }
+                if (audioContext.state !== 'running') {
+                    throw new Error('AudioContext is not running.');
+                }
+                return true;
+            } catch (e) {
+                log(`AudioContextの初期化/再開に失敗: ${e.message}`, 'error');
+                return false;
+            }
+        }
+
+        // --- 2. 初期化 ---
+        function initialize() {
+            // 既存のトラックをクリア
+            trackHeaderContainer.innerHTML = '';
+            gridContainer.innerHTML = '';
+            tracks = [];
+            gridCells = [];
+            trackHeaderElements = [];
+
+            for (let i = 0; i < NUM_TRACKS; i++) {
+                // 内部データ
+                tracks.push({
+                    buffer: null,
+                    name: `Track ${i + 1}`,
+                    volume: 1,
+                    pan: 0,
+                    steps: new Array(NUM_STEPS).fill(false),
+                    gainNode: null,
+                    pannerNode: null,
+                });
+                
+                // UI: トラックヘッダー (ミキサー)
+                const headerClone = trackHeaderTemplate.content.cloneNode(true);
+                const trackHeader = headerClone.querySelector('.track-header');
+                const trackNameEl = trackHeader.querySelector('.track-name');
+                const loadInput = trackHeader.querySelector('.load-sample-input');
+                const volumeSlider = trackHeader.querySelector('.volume-slider');
+                const panSlider = trackHeader.querySelector('.pan-slider');
+
+                trackNameEl.textContent = `Track ${i + 1}`;
+                
+                // サンプルロード
+                loadInput.addEventListener('change', async (e) => {
+                    if (!(await initAudio())) return;
+                    const file = e.target.files[0];
+                    if (!file) return;
+                    
+                    try {
+                        const arrayBuffer = await file.arrayBuffer();
+                        const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+                        tracks[i].buffer = audioBuffer;
+                        tracks[i].name = file.name;
+                        trackNameEl.textContent = file.name;
+                        log(`Track ${i+1}: "${file.name}" をロードしました。`, 'success');
+                    } catch (err) {
+                        log(`デコード失敗: ${file.name} - ${err.message}`, 'error');
+                    }
+                });
+
+                // ミキサーの初期化とイベント
+                if (audioContext) {
+                    tracks[i].gainNode = audioContext.createGain();
+                    tracks[i].pannerNode = audioContext.createStereoPanner();
+                    tracks[i].gainNode.connect(tracks[i].pannerNode);
+                    tracks[i].pannerNode.connect(audioContext.destination);
+                }
+                
+                volumeSlider.addEventListener('input', (e) => {
+                    tracks[i].volume = parseFloat(e.target.value);
+                    if (tracks[i].gainNode) {
+                        tracks[i].gainNode.gain.setValueAtTime(tracks[i].volume, audioContext.currentTime);
+                    }
+                });
+                
+                panSlider.addEventListener('input', (e) => {
+                    tracks[i].pan = parseFloat(e.target.value);
+                    if (tracks[i].pannerNode) {
+                        tracks[i].pannerNode.pan.setValueAtTime(tracks[i].pan, audioContext.currentTime);
+                    }
+                });
+
+                trackHeaderContainer.appendChild(trackHeader);
+                trackHeaderElements.push(trackHeader); // DOM参照を保存
+
+                // UI: グリッド (64ステップ)
+                const gridClone = trackGridTemplate.content.cloneNode(true);
+                const trackGrid = gridClone.querySelector('.track-grid');
+                gridCells[i] = [];
+                
+                for (let j = 0; j < NUM_STEPS; j++) {
+                    const step = document.createElement('div');
+                    step.className = 'step';
+                    // 16拍ごと (小節線)
+                    if (j % 16 === 0) {
+                        step.style.borderLeft = `3px solid #718096`; /* gray-500 */
+                    } 
+                    // 4拍ごと (拍線)
+                    else if (j % 4 === 0) {
+                        step.style.borderLeft = `2px solid #4a5568`; /* gray-600 */
+                    }
+
+                    step.addEventListener('click', () => {
+                        tracks[i].steps[j] = !tracks[i].steps[j];
+                        step.classList.toggle('active', tracks[i].steps[j]);
+                    });
+
+                    trackGrid.appendChild(step);
+                    gridCells[i][j] = step; // DOM参照を保存
+                }
+                gridContainer.appendChild(trackGrid);
+            }
+        }
+        
+        // --- 3. 再生エンジン (シーケンサー) ---
+        
+        function playTrackSound(track, time) {
+            if (!track.buffer) return;
+            
+            if (!audioContext) return;
+            // ノードの再接続 (AudioContextがリセットされた場合)
+            if (!track.gainNode || !track.pannerNode || track.gainNode.context.state === 'closed') {
+                track.gainNode = audioContext.createGain();
+                track.pannerNode = audioContext.createStereoPanner();
+                track.gainNode.connect(track.pannerNode);
+                track.pannerNode.connect(audioContext.destination);
+            }
+
+            // サウンドを再生
+            const source = audioContext.createBufferSource();
+            source.buffer = track.buffer;
+            
+            track.gainNode.gain.setValueAtTime(track.volume, time);
+            track.pannerNode.pan.setValueAtTime(track.pan, time);
+            
+            source.connect(track.gainNode);
+            source.start(time);
+        }
+
+        // 再生カーソルのハイライト
+        function updatePlayhead(step) {
+            for (let i = 0; i < NUM_TRACKS; i++) {
+                for (let j = 0; j < NUM_STEPS; j++) {
+                    gridCells[i][j].classList.toggle('playing', j === step);
+                }
+            }
+        }
+        
+        // メインのスケジューラーループ
+        function scheduler() {
+            if (!isPlaying || !audioContext) return;
+
+            while (nextNoteTime < audioContext.currentTime + scheduleAheadTime) {
+                // 現在のステップで発音すべきノートをスケジュール
+                for (let i = 0; i < NUM_TRACKS; i++) {
+                    if (tracks[i].steps[currentStep]) {
+                        playTrackSound(tracks[i], nextNoteTime);
+                    }
+                }
+                
+                // 次のノートの時間を計算
+                const secondsPerBeat = 60.0 / bpm;
+                const secondsPerStep = secondsPerBeat / 4; // 16分音符
+                nextNoteTime += secondsPerStep;
+
+                // ステップを進める
+                currentStep++;
+                if (currentStep === NUM_STEPS) {
+                    currentStep = 0;
+                }
+            }
+            
+            timerID = setTimeout(scheduler, lookaheadMs);
+        }
+        
+        // UI更新ループ (再生カーソル)
+        let lastStepDrawn = -1;
+        function drawLoop() {
+            if (!isPlaying || !audioContext) {
+                updatePlayhead(-1); // ハイライトを消す
+                return;
+            }
+
+            // `currentStep`はスケジューリング上の次のステップ
+            // 描画すべきは「今鳴っている」ステップ (currentStep - 1)
+            const stepToDraw = (currentStep - 1 + NUM_STEPS) % NUM_STEPS;
+            
+            if (lastStepDrawn !== stepToDraw) {
+                updatePlayhead(stepToDraw);
+                lastStepDrawn = stepToDraw;
+                
+                // 再生ヘッドに合わせてグリッドをスクロール
+                const stepElement = gridCells[0][stepToDraw];
+                if (stepElement) {
+                    const scrollContainer = gridContainer;
+                    const containerRect = scrollContainer.getBoundingClientRect();
+                    const stepRect = stepElement.getBoundingClientRect();
+
+                    // ステップがビューポートの外側（右）にあるか
+                    if (stepRect.right > containerRect.right) {
+                        scrollContainer.scrollLeft += stepRect.right - containerRect.right;
+                    } 
+                    // ステップがビューポートの外側（左）にあるか
+                    else if (stepRect.left < containerRect.left) {
+                        scrollContainer.scrollLeft -= containerRect.left - stepRect.left;
+                    }
+                    // 0ステップ目に戻ったらスクロールをリセット
+                    if (stepToDraw === 0) {
+                        scrollContainer.scrollLeft = 0;
+                    }
+                }
+            }
+
+            requestAnimationFrame(drawLoop);
+        }
+
+        async function playSequencer() {
+            if (isPlaying) return;
+            if (!(await initAudio())) return;
+
+            isPlaying = true;
+            playButton.textContent = 'PAUSE';
+            playButton.classList.remove('bg-green-600', 'hover:bg-green-700');
+            playButton.classList.add('bg-yellow-600', 'hover:bg-yellow-700');
+            
+            // currentStepは止めない (一時停止)
+            lastStepDrawn = -1;
+            nextNoteTime = audioContext.currentTime;
+            scheduler(); // スケジューリングループを開始
+            requestAnimationFrame(drawLoop); // UIループを開始
+            log('再生開始...', 'success');
+        }
+
+        function stopSequencer(reset = false) {
+            isPlaying = false;
+            playButton.textContent = '▶ PLAY';
+            playButton.classList.add('bg-green-600', 'hover:bg-green-700');
+            playButton.classList.remove('bg-yellow-600', 'hover:bg-yellow-700');
+            
+            clearTimeout(timerID);
+            
+            if (reset) {
+                currentStep = 0; // ステップを完全にリセット
+                nextNoteTime = 0.0;
+                lastStepDrawn = -1;
+                updatePlayhead(-1); // UIをリセット
+                gridContainer.scrollLeft = 0; // スクロールをリセット
+                log('再生停止。', 'info');
+            } else {
+                log('一時停止。', 'info');
+            }
+        }
+
+        // --- 4. プロジェクトのセーブ＆ロード ---
+
+        function audioBufferToWavBase64(buffer) {
+            // (ZMUSICシミュレーターから移植)
+            function writeString(view, offset, string) {
+                for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+            }
+            const numChannels = buffer.numberOfChannels, sampleRate = buffer.sampleRate, numSamples = buffer.length;
+            const dataSize = numChannels * numSamples * 2;
+            const bufferSize = 44 + dataSize;
+            const ab = new ArrayBuffer(bufferSize);
+            const view = new DataView(ab);
+            writeString(view, 0, 'RIFF');
+            view.setUint32(4, 36 + dataSize, true);
+            writeString(view, 8, 'WAVE');
+            writeString(view, 12, 'fmt ');
+            view.setUint32(16, 16, true);
+            view.setUint16(20, 1, true);
+            view.setUint16(22, numChannels, true);
+            view.setUint32(24, sampleRate, true);
+            view.setUint32(28, sampleRate * numChannels * 2, true);
+            view.setUint16(32, numChannels * 2, true);
+            view.setUint16(34, 16, true);
+            writeString(view, 36, 'data');
+            view.setUint32(40, dataSize, true);
+            
+            const pcmData = new Int16Array(numSamples * numChannels);
+            let offset = 0;
+            for (let i = 0; i < numSamples; i++) {
+                for (let c = 0; c < numChannels; c++) {
+                    const channelData = buffer.getChannelData(c);
+                    let s = Math.max(-1, Math.min(1, channelData[i]));
+                    pcmData[offset++] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+                }
+            }
+            new Uint8Array(ab, 44).set(new Uint8Array(pcmData.buffer));
+            const uint8 = new Uint8Array(ab);
+            return btoa(String.fromCharCode.apply(null, uint8));
+        }
+
+        async function base64ToAudioBuffer(base64) {
+            // (ZMUSICシミュレーターから移植)
+            if (!(await initAudio())) return null;
+            try {
+                const binaryString = atob(base64); 
+                const len = binaryString.length;
+                const bytes = new Uint8Array(len);
+                for (let i = 0; i < len; i++) bytes[i] = binaryString.charCodeAt(i);
+                return await audioContext.decodeAudioData(bytes.buffer);
+            } catch (e) {
+                log(`Base64のデコードに失敗: ${e.message}`, 'error');
+                return null;
+            }
+        }
+
+        saveProjectButton.onclick = () => {
+            log('プロジェクトを保存中...', 'info');
+            try {
+                const project = {
+                    version: 1.0,
+                    bpm: bpmInput.value,
+                    tracks: []
+                };
+
+                for (let i = 0; i < NUM_TRACKS; i++) {
+                    const track = tracks[i];
+                    project.tracks.push({
+                        name: track.name,
+                        volume: track.volume,
+                        pan: track.pan,
+                        steps: track.steps,
+                        buffer: track.buffer ? audioBufferToWavBase64(track.buffer) : null
+                    });
+                }
+                
+                const json = JSON.stringify(project);
+                const blob = new Blob([json], { type: 'application/json' });
+                const url = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = url;
+                a.download = 'web_daw_project.json';
+                a.click();
+                URL.revokeObjectURL(url);
+                log('プロジェクトを保存しました。', 'success');
+            } catch (e) {
+                log(`プロジェクトの保存に失敗しました: ${e.message}`, 'error');
+            }
+        };
+        
+        loadProjectInput.onchange = (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+            const reader = new FileReader();
+            reader.onload = async (event) => {
+                try {
+                    const project = JSON.parse(event.target.result);
+                    if (!project.version || !project.bpm || !project.tracks) throw new Error('無効なファイル');
+                    
+                    log('プロジェクトをロード中...', 'info');
+                    stopSequencer(true); // 完全に停止・リセット
+                    
+                    bpmInput.value = project.bpm;
+                    bpm = parseInt(project.bpm, 10);
+
+                    // UIと内部データをリセット
+                    initialize();
+                    if (!(await initAudio())) return;
+
+                    for (let i = 0; i < NUM_TRACKS; i++) {
+                        const pTrack = project.tracks[i];
+                        if (!pTrack) continue;
+
+                        tracks[i].name = pTrack.name;
+                        tracks[i].volume = pTrack.volume;
+                        tracks[i].pan = pTrack.pan;
+                        tracks[i].steps = pTrack.steps || new Array(NUM_STEPS).fill(false);
+                        
+                        // UI更新
+                        const header = trackHeaderElements[i];
+                        header.querySelector('.track-name').textContent = pTrack.name;
+                        header.querySelector('.volume-slider').value = pTrack.volume;
+                        header.querySelector('.pan-slider').value = pTrack.pan;
+                        
+                        // グリッドUIの復元
+                        for (let j = 0; j < NUM_STEPS; j++) {
+                            if (tracks[i].steps[j]) {
+                                gridCells[i][j].classList.add('active');
+                            } else {
+                                gridCells[i][j].classList.remove('active');
+                            }
+                        }
+
+                        // サンプルのデコード
+                        if (pTrack.buffer) {
+                            try {
+                                const audioBuffer = await base64ToAudioBuffer(pTrack.buffer);
+                                if (audioBuffer) {
+                                    tracks[i].buffer = audioBuffer;
+                                }
+                            } catch (e) {
+                                 log(`サンプルのデコード中にエラー: ${pTrack.name}`, 'error');
+                            }
+                        }
+                    }
+                    log('プロジェクトをロードしました。', 'success');
+                } catch (e) {
+                    log(`プロジェクトのロードに失敗: ${e.message}`, 'error');
+                } finally {
+                    loadProjectInput.value = '';
+                }
+            };
+            reader.readAsText(file);
+        };
+
+        // --- 5. イベントリスナー ---
+        playButton.onclick = () => {
+            if (isPlaying) {
+                stopSequencer(false); // 一時停止
+            } else {
+                playSequencer(); // 再生
+            }
+        };
+
+        stopButton.onclick = () => {
+            stopSequencer(true); // 完全に停止・リセット
+        };
+
+        bpmInput.onchange = () => {
+            bpm = parseInt(bpmInput.value, 10);
+            log(`BPMを ${bpm} に変更しました。`, 'info');
+        };
+
+        // --- 初期化処理 ---
+        window.onload = () => {
+            initialize();
+            // AudioContextはユーザー操作(Play/Load)まで初期化しない
+        };
+
+    </script>
+</body>
+</html>
