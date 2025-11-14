@@ -1,0 +1,15 @@
+{
+  "name": "tracker-sample-extractor",
+  "version": "1.0.0",
+  "description": "Extracts samples from tracker modules using Node.js",
+  "main": "extract.js",
+  "scripts": {
+    "start": "node extract.js"
+  },
+  "dependencies": {
+    "lamejs": "^1.2.1",
+    "xmp-js": "^1.1.3"
+  },
+  "author": "",
+  "license": "ISC"
+}
