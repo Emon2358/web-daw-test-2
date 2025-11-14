@@ -1,55 +1,48 @@
-# GitHub Actions ワークフロー名
-name: Download Multiple Files
+name: Extract Tracker Samples
 
-# ワークフローを実行するトリガー
+# 手動実行 (workflow_dispatch) を許可
 on:
-  # GitHub UIから手動でこのワークフローを実行できるようにします
   workflow_dispatch:
-    # 手動実行時にユーザーに入力を求めます
     inputs:
-      urls:
-        description: 'ダウンロードするURLのリスト (1行に1URLずつ入力)'
+      source_dir:
+        description: 'Tracker files directory'
         required: true
-        type: string
-        # デフォルト値（例）
-        default: |
-          https://example.com/file1.zip
-          https://example.com/file2.txt
+        default: 'music' # リポジトリ内の 'music' ディレクトリをデフォルトに
+      output_dir:
+        description: 'Output directory for MP3s'
+        required: true
+        default: 'extracted_samples'
+      sample_rate:
+        description: 'MP3 Sample Rate (Hz)'
+        required: true
+        default: '22050'
 
 jobs:
-  # ダウンロードを実行するジョブ
-  download:
-    # 最新のUbuntuランナーで実行
+  extract:
     runs-on: ubuntu-latest
-
+    
     steps:
-      # 1. ダウンロードしたファイルを保存するディレクトリを作成
-      - name: Create download directory
-        run: mkdir downloads
+      # 1. リポジトリのコードをチェックアウト
+      - name: Check out repository
+        uses: actions/checkout@v4
 
-      # 2. 入力されたURLリストをループ処理してファイルをダウンロード
-      - name: Download files from list
-        # inputs.urls（複数行の文字列）を1行ずつ読み込み、curlでダウンロード
-        run: |
-          echo "${{ inputs.urls }}" | while read url; do
-            # 空行をスキップ
-            if [ -n "$url" ]; then
-              echo "Downloading $url"
-              # -L: リダイレクトを許可
-              # -O: リモートサーバーのファイル名で保存
-              # -J: Content-Disposition ヘッダーを優先（-Oと併用）
-              curl -LOJ "$url"
-            fi
-          done
-        # 'downloads' ディレクトリ内でcurlを実行
-        working-directory: ./downloads
+      # 2. Node.js (v20) 環境をセットアップ
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
 
-      # 3. 'downloads' ディレクトリの中身をアーティファクトとしてアップロード
-      - name: Upload downloaded files as artifact
-        # actions/upload-artifact アクションを使用
+      # 3. package.json に基づいて依存関係をインストール
+      - name: Install dependencies
+        run: npm install
+
+      # 4. 抽出スクリプトを実行 (手動実行時の入力値を使用)
+      - name: Run extraction script
+        run: node extract.js "${{ inputs.source_dir }}" "${{ inputs.output_dir }}" "${{ inputs.sample_rate }}"
+
+      # 5. 生成されたファイル (output_dir) をアーティファクトとしてアップロード
+      - name: Upload extracted samples
         uses: actions/upload-artifact@v4
         with:
-          # アーティファクトの名前
-          name: downloaded-files
-          # アップロードするファイルのパス（ディレクトリ）
-          path: ./downloads/
+          name: mp3-samples
+          path: ${{ inputs.output_dir }}
