@@ -1,0 +1,55 @@
+# GitHub Actions ワークフロー名
+name: Download Multiple Files
+
+# ワークフローを実行するトリガー
+on:
+  # GitHub UIから手動でこのワークフローを実行できるようにします
+  workflow_dispatch:
+    # 手動実行時にユーザーに入力を求めます
+    inputs:
+      urls:
+        description: 'ダウンロードするURLのリスト (1行に1URLずつ入力)'
+        required: true
+        type: string
+        # デフォルト値（例）
+        default: |
+          https://example.com/file1.zip
+          https://example.com/file2.txt
+
+jobs:
+  # ダウンロードを実行するジョブ
+  download:
+    # 最新のUbuntuランナーで実行
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. ダウンロードしたファイルを保存するディレクトリを作成
+      - name: Create download directory
+        run: mkdir downloads
+
+      # 2. 入力されたURLリストをループ処理してファイルをダウンロード
+      - name: Download files from list
+        # inputs.urls（複数行の文字列）を1行ずつ読み込み、curlでダウンロード
+        run: |
+          echo "${{ inputs.urls }}" | while read url; do
+            # 空行をスキップ
+            if [ -n "$url" ]; then
+              echo "Downloading $url"
+              # -L: リダイレクトを許可
+              # -O: リモートサーバーのファイル名で保存
+              # -J: Content-Disposition ヘッダーを優先（-Oと併用）
+              curl -LOJ "$url"
+            fi
+          done
+        # 'downloads' ディレクトリ内でcurlを実行
+        working-directory: ./downloads
+
+      # 3. 'downloads' ディレクトリの中身をアーティファクトとしてアップロード
+      - name: Upload downloaded files as artifact
+        # actions/upload-artifact アクションを使用
+        uses: actions/upload-artifact@v4
+        with:
+          # アーティファクトの名前
+          name: downloaded-files
+          # アップロードするファイルのパス（ディレクトリ）
+          path: ./downloads/
