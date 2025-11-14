@@ -70,7 +70,11 @@
         const statusArea = document.getElementById('status-area');
         const sampleList = document.getElementById('sample-list');
         
-        let xmp = new Xmp(); // Protracker() の代わりに Xmp() を使用
+        // --- 修正点 ---
+        // Xmp() ではなく window.Xmp() を使用してインスタンス化します
+        let xmp = new window.Xmp(); 
+        // --- 修正ここまで ---
+
         let moduleData = null; // ロードされたモジュールデータを保持
 
         fileInput.addEventListener('change', handleFileLoad);
